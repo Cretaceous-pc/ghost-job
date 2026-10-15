@@ -865,17 +865,28 @@ class ConfigPage:
 
     @classmethod
     def _tag_input(cls, title: str, field: str, placeholder: str) -> rx.Component:
-        """关键词输入：回车添加为标签，点 × 删除。"""
+        """关键词输入：回车添加为标签，点 × 删除；输入后点到别处（失焦）也会自动添加。
+
+        失焦时直接触发所属表单提交，走的还是 ``add_item`` 那一条路，所以不需要把输入框
+        做成受控组件——受控输入会在拼音输入过程中被状态回写打断。
+        """
+        input_id = f"tag-input-{field}"
+        commit_on_blur = (
+            f"const el = document.getElementById({input_id!r});"
+            "if (el && el.form && el.value.trim()) el.form.requestSubmit();"
+        )
         return rx.box(
             cls._field_label(title),
             rx.form(
                 cls._tag_box(
                     field,
                     rx.el.input(
+                        id=input_id,
                         name="tag",
                         placeholder=placeholder,
                         auto_complete="off",
                         style=cls.BARE_INPUT,
+                        on_blur=rx.call_script(commit_on_blur),
                     ),
                 ),
                 on_submit=lambda form: ConfigState.add_item(
