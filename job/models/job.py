@@ -55,6 +55,7 @@ class JobRow(SQLModel, table=True):
     location: str = ""
     experience: str = ""
     education: str = ""
+    active_time: str = Field(default="", description="Boss 活跃度文案，如「今日活跃」")
     description: str = ""
     hr_name: str = ""
     hr_title: str = ""
@@ -97,6 +98,7 @@ class JobRow(SQLModel, table=True):
             "description": self.description,
             "experience": self.experience,
             "education": self.education,
+            "activeTime": self.active_time,
             "matchStatus": "未分析" if score is None else f"{score} 分",
             "matchHigh": score is not None and score >= self.HIGH_MATCH,
             "result": self.result,
