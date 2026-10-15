@@ -252,6 +252,14 @@ class Activity:
         return [cls.ONLINE, *(name for name, _ in cls.GROUPS)]
 
     @classmethod
+    def wordings(cls, level: str) -> tuple[str, ...]:
+        """某个档位对应的全部接口措辞（入库后按档位筛选时用）。"""
+        for name, wordings in cls.GROUPS:
+            if name == level:
+                return wordings
+        return (level,)
+
+    @classmethod
     def clean(cls, text: str) -> str:
         """去掉空白与零宽字符，私用区数字还原成 0-9。"""
         chars: list[str] = []

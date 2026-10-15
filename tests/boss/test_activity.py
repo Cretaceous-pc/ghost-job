@@ -35,6 +35,19 @@ def test_labels_cover_every_group_in_order():
     ]
 
 
+def test_wordings_lists_every_wording_of_a_level():
+    """按档位筛选历史岗位时，要把该档的全部措辞都算上。"""
+    assert Activity.wordings("3日内活跃") == (
+        "3日内活跃",
+        "三日内活跃",
+        "日内活跃",
+        "昨日活跃",
+        "昨天活跃",
+    )
+    assert Activity.wordings("本周活跃") == ("本周活跃", "这周活跃")
+    assert Activity.wordings("没这个档") == ("没这个档",)
+
+
 @pytest.mark.parametrize("text", REAL_TEXTS)
 def test_real_texts_map_to_their_own_level(text: str):
     assert Activity.of(text) == text

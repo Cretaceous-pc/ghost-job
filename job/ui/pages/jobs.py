@@ -67,6 +67,13 @@ class JobsPage:
                 size="2",
                 width="136px",
             ),
+            rx.select(
+                JobsState.activity_options,
+                value=JobsState.activity,
+                on_change=JobsState.set_activity,
+                size="2",
+                width="118px",
+            ),
             rx.box(
                 rx.hstack(
                     rx.icon("search", size=16, color=MUTED),
