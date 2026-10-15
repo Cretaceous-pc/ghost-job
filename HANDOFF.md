@@ -91,14 +91,36 @@ uv run python -m job
 - **真实界面断言**：配置页卡片存在、下拉 13 档位、勾选状态回读正确；岗位管理按「刚刚活跃」筛选后表格 3 条 = 「共 3 条」；详情弹窗显示「Boss 活跃度：刚刚活跃」；控制台**零错误**
 - **关键词失焦**：修复后实测「输入 → 点别处 → 刷新」标签仍在、输入框自动清空、库里已落盘；测试数据已还原
 
-## 打包（v0.6.9）
+## 打包（v0.6.9，已完成）
 
-`release.yml` 的 Windows 步骤已在本地复刻成脚本：`%TEMP%\build-069.ps1`（6 步：doctor → export → 注入版本与 win-dlls 映射 → 图标 → 装配内嵌 Python + 暂存 DLL → `reflex-desktop build --bundle --skip-export`）。
+产物在 `tauri/src-tauri/target/release/bundle/`：
 
-- 产物目录：`tauri/src-tauri/target/release/bundle/{nsis,msi}`
-- `tauri/`、`dist/`、`target/` 都已 gitignore，不会污染提交
-- 校验口径（同 CI）：安装包里的 `python312.dll` 必须和 `ghost-job.exe` 同目录，否则启动即崩
-- ⚠️ Tauri 打包会去 GitHub 下 NSIS / WiX，网络不通时用 `ghproxy.net` 镜像 + `robocopy /E` 手工放置（本机以前踩过）
+| 文件 | 大小 | SHA256 |
+|---|---|---|
+| `nsis/Ghost Job_0.6.9_x64-setup.exe` | 82.3 MB | `b1c9cc441c018d8612610753a98bd60c8af5552cff8a5a51c2c983a65d84b824` |
+| `msi/Ghost Job_0.6.9_x64_en-US.msi` | 127 MB | `7f882b35ee5671675fc015db0595b62fc9b776d256db7a81f9e4970d220e7c47` |
+
+**完整步骤**（照 `release.yml` 的 Windows 流程，一步都不能少）：
+
+1. `uv run reflex-desktop doctor --bundle`
+2. `uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.txt` ← **漏了这步会打出「装得上但一启动就崩」的包**（`/requirements.txt` 已在 gitignore 里）
+3. `uv run reflex export --frontend-only`
+4. 改 `tauri/src-tauri/tauri.conf.json`：`version = "0.6.9"`，并把资源里的 `python/python/python3*.dll` 换成 4 条 `win-dlls/<dll> → <dll>` 映射
+5. `cd tauri/src-tauri && cargo tauri icon ../../assets/icon.png`
+6. 装配内嵌运行时，再把 4 个 DLL 复制到 `tauri/src-tauri/win-dlls/`
+7. `uv run reflex-desktop build --bundle --skip-export`
+
+### 两个真实踩坑（已规避，别再踩）
+
+- **必须设 `PYTHONUTF8=1`**：`reflex_desktop/plugin.py` 的 `_substitute_tokens` 用 `path.read_text()` 不指定编码，中文 Windows 下按 cp936 去读 UTF-8 的 `src/main.rs` → `UnicodeDecodeError`，`reflex export` 直接失败。这是 reflex-desktop 的可移植性 bug，值得给上游提。
+- **依赖标记会骗人**：`tauri/src-tauri/site-packages/.reflex_desktop_deps` 存的是依赖集指纹。第一次装配时（没有 `requirements.txt`）指纹里只有 reflex 基础依赖，之后再打包就会打印 `embedded deps already installed (skipping pip)` 跳过安装，于是打出来的包一启动就是 `ModuleNotFoundError: No module named 'sqlalchemy'`。补上 `requirements.txt` 后**必须删掉这个标记文件**再重打。重打用 `%TEMP%\rebundle-069.ps1`——它**不删 `tauri/`**，保留 1.7 GB 的 cargo 缓存。
+
+### 产物验证（本机实跑过）
+
+- `target/release/` 下 `ghost-job.exe`(18.4 MB) 与 `python312.dll`(6.6 MB) 同目录 —— 等价于 CI 的 `python312.dll is not next to ghost-job.exe` 检查
+- 直接启动编译产物：进程存活，**6 秒内** `http://127.0.0.1:18380/ping` 返回 `HTTP 200 "pong"`（内嵌后端 + 应用依赖齐全）
+- 辅助脚本：`%TEMP%\build-069.ps1`（全流程）、`rebundle-069.ps1`（只重打包）、`verify-built-exe.ps1`（产物自检）、`diag-built-exe.ps1`（抓启动失败 stderr）
+- ⚠️ Tauri 打包会去 GitHub 下 NSIS / WiX，网络不通时用 `ghproxy.net` 镜像 + `robocopy /E` 手工放置（本机以前踩过；本次直连成功）
 
 ## 上手须知（踩过的坑）
 
